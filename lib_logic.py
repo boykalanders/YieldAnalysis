@@ -47,8 +47,6 @@ def get_impermanent_loss_given_range(price_change, price_range_down):
     #input value check ignored here
     price_range_up = get_opposite_bin_limit_with_same_liquidity(price_range_down)
 
-    #print(price_change,price_range_down, price_range_up )
-
     x_0 = 1-1/np.sqrt(1+price_range_up)
     y_0 = 1-np.sqrt(1+price_range_down)
 
@@ -214,7 +212,7 @@ if __name__ == "__main__":
         token1 = df_pool_input.at[index,'token1'];
         fee_bps = df_pool_input.at[index,'fee_bps'];
         df_result = get_pool_performance_statistic(pool_addr, token0, token1,fee_bps, 2022)
-        print(df_result)
+        # print(df_result)
         df_pool_stats = pd.concat([df_pool_stats, df_result], ignore_index=True)
     
     df_pool_stats.to_csv('output/result_pools.csv', index=False)

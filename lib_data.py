@@ -2,33 +2,47 @@ import requests
 from datetime import datetime, timedelta
 import pandas as pd
 import lib_const
-
+import ast
 
 def get_crypto_price_data_csv(date_begin=datetime(2000, 1,1), date_end=datetime(3000,1,1)):
 
-    file_name = lib_const.get_crypto_price_filename()
+    file_name = lib_const.get_crypto_price_filename("pool_data_0xcbcdf9626bc03e24f779434178a73a0b4bad62ed_WBTC_WETH.csv")
     df=pd.read_csv(file_name)
-    df['date'] = pd.to_datetime(df['date'])
-    
+    df['date'] = pd.to_datetime(df['date'], unit='s')
     if(isinstance(date_begin, str)) :
         date_begin = datetime.strptime(date_begin, "%Y-%m-%d")
     if(isinstance(date_end, str)) :
         date_end = datetime.strptime(date_end, "%Y-%m-%d")
-    df = df[ (df['date'] >= date_begin) & (df['date'] <= date_end) ]
+        
+    df = df[df['date'] >= date_begin]
+    df = df[df['date'] <= date_end]
     
     df.set_index('date', inplace=True)
+    df['price'] = df['token0Price']
+    def extract_token0_symbols(pool_str):
+        pool_dict = ast.literal_eval(pool_str)
+        token0_symbol = pool_dict['token0']['symbol']
+        return token0_symbol
+    
+    def extract_token1_symbols(pool_str):
+        pool_dict = ast.literal_eval(pool_str)
+        token1_symbol = pool_dict['token1']['symbol']
+        return token1_symbol
+    # Apply the function to extract token symbols
+    df['token0_symbol'] = df['pool'].apply(extract_token0_symbols)
+    df['token1_symbol'] = df['pool'].apply(extract_token1_symbols)
     return df
 
 # API each time can only get 100 recoreds, hence break down the retrieve into year-month
 def get_uniswap_v3_data_limit100(pool_address, from_timestamp, to_timestamp):
     # Uniswap V3 Subgraph endpoint
-    endpoint = 'https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3'
+    endpoint = 'https://gateway.thegraph.com/api/8b29398e34a33f4bcd32fa6b3f7c9835/subgraphs/id/5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV'
 
     # GraphQL query to get historical data
-    query = '''
-    {
+    query = '''{
     poolDayDatas( orderBy: date, 
-    where: { pool: "%s", date_gte: %d, date_lte: %d } ) {
+    where: { pool: "%s", 
+      date_gte: %d } ) {
         date
         liquidity
         sqrtPrice
@@ -39,16 +53,26 @@ def get_uniswap_v3_data_limit100(pool_address, from_timestamp, to_timestamp):
         feesUSD
       	volumeUSD
       	tvlUSD
+    		pool {
+          token0 {
+            symbol
+          }
+          token1 {
+            symbol
+          }
+    		}
     }
     }
 
-    ''' % (pool_address, from_timestamp, to_timestamp)
-    # print(query)
+    ''' % (pool_address, from_timestamp)
+    
     # Make the GraphQL request
     response = requests.post(endpoint, json={'query': query})
     data = response.json()
-    #print(data)
+    print(data)
+    
     return data['data']['poolDayDatas']
+
 
 def last_day_of_month(year, month):
     # Calculate the first day of the next month
@@ -74,11 +98,7 @@ def download_uniswap_v3_data_year(pool_address, years):
             df = pd.DataFrame(uniswap_v3_data_month)
             pool_df = pd.concat([pool_df, df], ignore_index=True)
             
-    return pool_df
-
-
-
-    
+    return pool_df    
 
 def get_uniswap_pool_data_csv(pool_address, date_begin=datetime(2000, 1,1), date_end=datetime(3000,1,1)):
     data_file_name = lib_const.get_pool_filename(pool_address)
@@ -146,8 +166,6 @@ if __name__ == "__main__":
             file_name = lib_const.get_pool_filename(pool_address, token0=pool_info[1], token1=pool_info[2])
             print("save data:",file_name )
             result_df.to_csv(file_name, index=False)
-            #print("will only run for the first pool during test. ")
-            #break
     
     # if only wanna run individual pool    
     # pool_address = '0xcbcdf9626bc03e24f779434178a73a0b4bad62ed' #WBTC WETH 0.3%
