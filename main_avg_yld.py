@@ -61,7 +61,6 @@ avg_d_tvl_coverage = 1/   sum(w_tvl_cvg / range_down)
 print("Range down limit to get market average yield: ", avg_d_tvl_coverage)
 print("Range down limit to get market average yield when ignore rang e cross effect (not accurate): ", avg_d_tvl_only)
 
-
 import matplotlib.pyplot as plt
 
 x = np.concatenate((np.flip(range_down), -1*range_down))
