@@ -5,8 +5,8 @@ import lib_logic as lib_lgc
 import lib_data
 
 
-print("If you don't have data downloadeded and put as CSV in output folder, please run lib_data.py first!")
-print("Set load_all_pool_related_data and load_price_related_data = True before run ")
+# print("If you don't have data downloadeded and put as CSV in output folder, please run lib_data.py first!")
+# print("Set load_all_pool_related_data and load_price_related_data = True before run ")
 
   
 def get_df_daily_fees(date_begin = "2009-01-01", date_end = "3000-01-01"):
@@ -19,15 +19,14 @@ def get_df_daily_fees(date_begin = "2009-01-01", date_end = "3000-01-01"):
     df.set_index('date_i', inplace=True)
     return df[[ 'feesUSD', 'tvlUSD', 'daily_fee_rate']] # 'date',
 
-def get_df_daily_price(date_begin = '2022-12-01', date_end ="3000-01-01"):
+def get_df_daily_price(date_begin = '2021-03-01', date_end ="3000-01-01"):
 
     # Load the CSV file
     df =  lib_data.get_crypto_price_data_csv(date_begin, date_end)
-
     # Filter rows related to ETH price in terms of BTC
-    df = df[(df['token'] == 'ETH') & (df['vs_currency'] == 'btc') ]    
+    df = df[df['token0_symbol'] == 'WBTC'] 
+    df = df[df['token1_symbol'] == 'WETH']
     df["YYYYMM"] = df.index.strftime('%Y%m')
-    
     df = add_monthly_price_change(df)
     
     df = df[~df.index.duplicated(keep='last')] # Remove duplicates by taking the last value for each date
@@ -35,7 +34,7 @@ def get_df_daily_price(date_begin = '2022-12-01', date_end ="3000-01-01"):
 
 def add_monthly_price_change(df):
     # Group by 'Token' and the month of the 'date' column
-    grouped = df.groupby(['token', 'YYYYMM' ])
+    grouped = df.groupby(['YYYYMM'])
     
     if 'date' not in df.columns:
         df['date'] = df.index
@@ -43,7 +42,6 @@ def add_monthly_price_change(df):
     # Calculate the first date and close price of each month for each group
     df['month_begin_date'] = grouped['date'].transform('min')
     df['month_last_date'] = grouped['date'].transform('max')
-    
     
     df['price_month_begin_date'] = grouped['price'].transform('first')
     df['price_month_end_date'] = grouped['price'].transform('last')
